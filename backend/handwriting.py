@@ -49,9 +49,13 @@ class Handwriting():
         avg_contour_h = int(avg_contour_h)
         return filtered_contours, avg_contour_h, avg_contour_w
 
-    def print_bounding_boxes(self, contours):
+    def print_bounding_boxes(self):
+        """
+        Prints the bounding boxes found by function
+        :return: None
+        """
         copied_image = Image.copy_image(self.image_object)
-        for contour in contours:
+        for contour in self.contours:
             (x, y, w, h) = cv2.boundingRect(contour)
             # if the contour is sufficiently large, it must be a digit
             x1 = x + w
@@ -62,8 +66,12 @@ class Handwriting():
         Image.save_image(self.output_folder + self.filename + 'Bounding' + self.file_extension, copied_image)
 
     def find_bounding_boxes_and_crop(self, should_print_bounding_boxes=False):
-        # img = cv2.medianBlur(image, 5)
-
+        """
+        Finds the bounding boxes around each letter, crops and scales to uniform size
+        :param should_print_bounding_boxes: Boolean, true if you want to print the bounding box representation
+        :return: bounding boxes, array of scaled cropped letters
+        """
+        # creates grayscale image for the thresholding to take effect
         imgray = cv2.cvtColor(self.image_object,cv2.COLOR_BGR2GRAY)
         ret, th1 = cv2.threshold(imgray, 127, 255, cv2.THRESH_BINARY)
         contours, hierarchy = cv2.findContours(th1,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -79,11 +87,19 @@ class Handwriting():
         self.avg_contour_h, self.avg_contour_w = avg_contour_h, avg_contour_w
         self.contours = letter_contours_bounding_box
         if should_print_bounding_boxes:
-            self.print_bounding_boxes(contours)
+            self.print_bounding_boxes()
         cropped_letters = self.crop_and_scale(letter_contours_bounding_box, avg_contour_h, avg_contour_w, min_size)
         return letter_contours_bounding_box, cropped_letters
 
     def crop_and_scale(self, letter_contours, avg_contour_h, avg_contour_w, min_size):
+        """
+        Crops and scales each letter to the same size
+        :param letter_contours: the bounding boxes of each letter
+        :param avg_contour_h: the uniform size to scale to
+        :param avg_contour_w: the uniform size to scale to
+        :param min_size: the smallest size a letter can be
+        :return: array of the cropped letters
+        """
         cropped_letters = []
         # we will crop each letter and scale it so they are uniform
         for letter_contour in letter_contours:
@@ -108,14 +124,18 @@ class Handwriting():
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
             centroids.append((cX, cY))
+        self.centroids = centroids
         if should_print_centroids:
             self.print_centroids(centroids)
-        self.centroids = centroids
         return centroids
 
-    def print_centroids(self, centroids):
+    def print_centroids(self):
+        """
+        Prints the centroids found by function
+        :return: None
+        """
         copied_image = Image.copy_image(self.image_object)
-        for centroid in centroids:
+        for centroid in self.centroids:
             cX, cY = centroid
             cv2.circle(copied_image, (cX, cY), 5, (255, 255, 255), -1)
             cv2.putText(copied_image, "centroid", (cX - 25, cY - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
@@ -124,6 +144,10 @@ class Handwriting():
         Image.save_image(self.output_folder + self.filename + 'Centroid' + self.file_extension, copied_image)
 
     def print_line_placements(self, breaks):
+        """
+        Prints the line placements found by function
+        :return: None
+        """
         copied_image = Image.copy_image(self.image_object)
         for placement in breaks:
             # the shape is finding the width and dividing by two to get to middle
@@ -131,6 +155,11 @@ class Handwriting():
         Image.save_image(self.output_folder + self.filename + 'Lines' + self.file_extension, copied_image)
 
     def find_line_placements(self, should_print_line_placements):
+        """
+        Approximates where lines of texts are in the image
+        :param should_print_line_placements: boolean whether to print the line placements
+        :return:
+        """
 
         # a list of cY so we can cluster them, essentially converts the centroids for 1d clustering
         centroids_flattened_to_y = [cY for (cX, cY) in self.centroids]
@@ -166,6 +195,10 @@ class Handwriting():
         return x, best_line_placement
 
     def print_final(self):
+        """
+        Prints the final result
+        :return: None
+        """
         final_image = Image.new_similar_image(self.image_object)
 
         for cropped_letter, original_contour_bounding_box in zip(self.cropped_letters, self.contours):
